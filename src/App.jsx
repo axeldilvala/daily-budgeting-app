@@ -25,7 +25,14 @@ const DEFAULT_CATEGORY_GROUPS = {
 
 const DEFAULT_INCOME_CATEGORIES = ["Wages", "Cash leftovers", "Bank cash leftovers", "Transfers", "Incoming Transfers", "Dividends", "Investment Withdrawal"];
 
-const BASE_SOURCES = ["BCA Account", "Cash", "Other"];
+// Cash / bank accounts — real money you hold. Each maps to an opening
+// balance; the live balance is opening + income in − expenses out −
+// card payments made from it. Editable from the Cards tab.
+const DEFAULT_ACCOUNTS = {
+  "BCA Account": 0,
+  "Cash": 0,
+  "Other": 0,
+};
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -50,6 +57,8 @@ const STRINGS = {
       incomeVsExpense: "INCOME VS EXPENSE — ALL MONTHS",
       spendingByGroup: "SPENDING BY GROUP",
       noExpenses: "No expenses logged this month yet.",
+      accountsBalance: "ACCOUNTS — CURRENT BALANCE",
+      accountsHint: "Opening balance + income in − spending & card payments out. Set opening balances on the Cards tab.",
       investmentsBalance: "INVESTMENTS — CURRENT BALANCE",
       realizedThisMonth: "Realized this month",
       realizedThisYear: "Realized this year",
@@ -72,11 +81,16 @@ const STRINGS = {
       closesPosition: "This closes out the position",
       closesPositionHint: "Nothing left invested here — any gap to the tracked balance is logged as a realized gain or loss.",
       fundSource: "FUND SOURCE",
+      fundSourceHint: "The account this was paid from, or the card it was charged to.",
+      depositTo: "DEPOSIT TO",
+      depositToHint: "This income is added to this account's balance.",
+      paidFrom: "PAID FROM",
       addExpense: "Add expense",
       addIncome: "Add income",
       errName: "Give this entry a name.",
       errAmount: "Enter an amount greater than zero.",
       errDate: "Pick a date.",
+      errDepositTo: "Pick an account for this income to land in.",
     },
     entries: {
       all: "All",
@@ -127,7 +141,18 @@ const STRINGS = {
       amount: "AMOUNT (IDR)",
       date: "DATE",
       logPaymentBtn: "Log payment",
-      logPaymentHint: "This only settles the card balance shown above — it won't affect your income/expense totals or Net Cash Flow, since the spending itself was already counted when you made each purchase.",
+      logPaymentHint: "This settles the card balance shown above and reduces the account you paid from. It won't affect your income/expense totals or Net Cash Flow, since the spending itself was already counted when you made each purchase.",
+      paidFrom: "PAID FROM",
+      accountsTitle: "Accounts",
+      accountsHint: "Your real cash and bank balances. Tap the big number to set an account to exactly what it holds right now. It then updates on its own as you log income, spending, and card payments. \"Opening balance\" is the finer control — the amount before your first logged entry.",
+      openingBalanceLabel: "Opening balance",
+      liveBalanceLabel: "balance now",
+      tapToEdit: "tap to set",
+      accountEntries: (n) => `${n} entries touch this account`,
+      addAccount: "Add account",
+      newAccount: "New account",
+      accountNamePlaceholder: "Account name (e.g. Jago Pocket)",
+      openingPlaceholder: "Opening balance (IDR)",
     },
     data: {
       exportTitle: "Export your data",
@@ -167,6 +192,10 @@ const STRINGS = {
           body: "Balance owed = everything spent on that card minus payments you've logged against it. If something was charged to a card without you logging it (a forgotten subscription, for example), use \"Adjust balance\" on the Cards tab instead of trying to force it through a normal entry.",
         },
         {
+          h: "Accounts: your real cash",
+          body: "Each account (BCA, Cash, etc.) has an opening balance you set once on the Cards tab — what you held before your first logged entry. Its live balance then moves on its own: income logged to it adds, expenses paid from it subtract, and card payments made from it subtract. Logging a card payment asks which account it came from so that money actually leaves your balance.",
+        },
+        {
           h: "Deleting a category",
           body: "Removes it from future dropdowns only. Every past entry keeps its original label — nothing in your history changes or disappears.",
         },
@@ -193,6 +222,8 @@ const STRINGS = {
       incomeVsExpense: "PEMASUKAN VS PENGELUARAN — SEMUA BULAN",
       spendingByGroup: "PENGELUARAN PER GRUP",
       noExpenses: "Belum ada pengeluaran bulan ini.",
+      accountsBalance: "REKENING — SALDO SAAT INI",
+      accountsHint: "Saldo awal + pemasukan masuk − belanja & pembayaran kartu keluar. Atur saldo awal di tab Kartu.",
       investmentsBalance: "INVESTASI — SALDO SAAT INI",
       realizedThisMonth: "Realisasi bulan ini",
       realizedThisYear: "Realisasi tahun ini",
@@ -215,11 +246,16 @@ const STRINGS = {
       closesPosition: "Ini menutup posisi investasi",
       closesPositionHint: "Tidak ada sisa investasi di sini — selisih dari saldo yang tercatat akan dicatat sebagai untung atau rugi terealisasi.",
       fundSource: "SUMBER DANA",
+      fundSourceHint: "Rekening asal pembayaran, atau kartu yang dipakai.",
+      depositTo: "MASUK KE REKENING",
+      depositToHint: "Pemasukan ini ditambahkan ke saldo rekening ini.",
+      paidFrom: "DIBAYAR DARI",
       addExpense: "Tambah pengeluaran",
       addIncome: "Tambah pemasukan",
       errName: "Beri nama untuk catatan ini.",
       errAmount: "Masukkan jumlah lebih dari nol.",
       errDate: "Pilih tanggal.",
+      errDepositTo: "Pilih rekening tujuan pemasukan ini.",
     },
     entries: {
       all: "Semua",
@@ -270,7 +306,18 @@ const STRINGS = {
       amount: "JUMLAH (IDR)",
       date: "TANGGAL",
       logPaymentBtn: "Catat pembayaran",
-      logPaymentHint: "Ini hanya melunasi saldo kartu di atas — tidak memengaruhi total pemasukan/pengeluaran atau Arus Kas Bersih, karena belanjanya sendiri sudah tercatat saat kamu membeli.",
+      logPaymentHint: "Ini melunasi saldo kartu di atas dan mengurangi rekening yang kamu pakai untuk membayar. Tidak memengaruhi total pemasukan/pengeluaran atau Arus Kas Bersih, karena belanjanya sendiri sudah tercatat saat kamu membeli.",
+      paidFrom: "DIBAYAR DARI",
+      accountsTitle: "Rekening",
+      accountsHint: "Saldo tunai dan bank aslimu. Ketuk angka besarnya untuk menyetel rekening ke jumlah yang benar-benar ada sekarang. Setelah itu saldo berubah sendiri seiring kamu mencatat pemasukan, belanja, dan pembayaran kartu. \"Saldo awal\" adalah kontrol lebih detail — jumlah sebelum catatan pertamamu.",
+      openingBalanceLabel: "Saldo awal",
+      liveBalanceLabel: "saldo saat ini",
+      tapToEdit: "ketuk untuk mengatur",
+      accountEntries: (n) => `${n} catatan memakai rekening ini`,
+      addAccount: "Tambah rekening",
+      newAccount: "Rekening baru",
+      accountNamePlaceholder: "Nama rekening (contoh: Jago Pocket)",
+      openingPlaceholder: "Saldo awal (IDR)",
     },
     data: {
       exportTitle: "Ekspor datamu",
@@ -308,6 +355,10 @@ const STRINGS = {
         {
           h: "Limit kartu kredit",
           body: "Saldo terutang = semua yang dibelanjakan dengan kartu itu dikurangi pembayaran yang sudah kamu catat. Kalau ada tagihan yang masuk ke kartu tanpa sempat dicatat (misalnya langganan yang kelupaan), gunakan \"Adjust balance\" di tab Kartu, bukan dipaksakan lewat catatan biasa.",
+        },
+        {
+          h: "Rekening: uang aslimu",
+          body: "Setiap rekening (BCA, Cash, dll.) punya saldo awal yang kamu atur sekali di tab Kartu — jumlah yang kamu punya sebelum catatan pertama. Saldo saat ini lalu bergerak sendiri: pemasukan ke rekening itu menambah, pengeluaran dari rekening itu mengurangi, dan pembayaran kartu dari rekening itu mengurangi. Saat mencatat pembayaran kartu, aplikasi menanyakan rekening asalnya supaya uang itu benar-benar keluar dari saldomu.",
         },
         {
           h: "Menghapus kategori",
@@ -438,6 +489,30 @@ function computeCardBalances(transactions, cardNames) {
 }
 
 /* ---------------------------------------------------------
+   ACCOUNT BALANCE ENGINE
+   Live balance of a cash/bank account = its opening balance,
+   plus every income received into it, minus every expense paid
+   from it, minus every card payment made from it. Card payments
+   carry the card in `source` (so the card's owed balance still
+   drops) and the paying account in `fromAccount`.
+--------------------------------------------------------- */
+
+function computeAccountBalances(transactions, accounts) {
+  const opening = accounts || {};
+  const balances = {};
+  Object.keys(opening).forEach((a) => (balances[a] = opening[a] || 0));
+  transactions.forEach((t) => {
+    if (t.type === "income" && t.source in balances) balances[t.source] += t.amount;
+    else if (t.type === "expense" && t.source in balances) balances[t.source] -= t.amount;
+    else if (t.type === "payment" && t.fromAccount && t.fromAccount in balances) {
+      balances[t.fromAccount] -= t.amount;
+    }
+  });
+  const total = Object.values(balances).reduce((a, b) => a + b, 0);
+  return { balances, total };
+}
+
+/* ---------------------------------------------------------
    STORAGE
 --------------------------------------------------------- */
 
@@ -445,6 +520,7 @@ const STORAGE_KEY = "axel-budget-transactions-v1";
 const CATEGORY_STORAGE_KEY = "axel-budget-category-groups-v1";
 const INCOME_CATEGORY_STORAGE_KEY = "axel-budget-income-categories-v1";
 const CARD_LIMIT_STORAGE_KEY = "axel-budget-card-limits-v1";
+const ACCOUNT_STORAGE_KEY = "axel-budget-accounts-v1";
 const LANG_STORAGE_KEY = "axel-budget-lang-v1";
 
 const DEFAULT_CARD_LIMITS = {
@@ -564,6 +640,7 @@ export default function App() {
   const [categoryGroups, setCategoryGroups] = useState(null);
   const [incomeCategories, setIncomeCategories] = useState(null);
   const [cardLimits, setCardLimits] = useState(null);
+  const [accounts, setAccounts] = useState(null);
   const [lang, setLang] = useState(null);
   const [tab, setTab] = useState("overview");
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -602,6 +679,14 @@ export default function App() {
       } else {
         setCardLimits(DEFAULT_CARD_LIMITS);
         await saveJSON(CARD_LIMIT_STORAGE_KEY, DEFAULT_CARD_LIMITS);
+      }
+
+      const storedAccounts = await loadJSON(ACCOUNT_STORAGE_KEY);
+      if (storedAccounts && Object.keys(storedAccounts).length) {
+        setAccounts(storedAccounts);
+      } else {
+        setAccounts(DEFAULT_ACCOUNTS);
+        await saveJSON(ACCOUNT_STORAGE_KEY, DEFAULT_ACCOUNTS);
       }
 
       const storedLang = await loadJSON(LANG_STORAGE_KEY);
@@ -860,14 +945,73 @@ export default function App() {
     showToast(`Deleted "${name}"`);
   };
 
-  const countSourceUsage = (source) => transactions.filter((t) => t.source === source).length;
+  const countSourceUsage = (source) =>
+    transactions.filter((t) => t.source === source || t.fromAccount === source).length;
+
+  /* ---- account management ---- */
+
+  const updateAccountOpening = async (name, amount) => {
+    const next = { ...accounts, [name]: amount };
+    setAccounts(next);
+    await saveJSON(ACCOUNT_STORAGE_KEY, next);
+    showToast("Balance updated");
+  };
+
+  const addAccount = async (name, opening) => {
+    const clean = name.trim();
+    if (!clean || clean in accounts) {
+      showToast("That account already exists");
+      return false;
+    }
+    const next = { ...accounts, [clean]: opening || 0 };
+    setAccounts(next);
+    await saveJSON(ACCOUNT_STORAGE_KEY, next);
+    showToast(`Added "${clean}"`);
+    return true;
+  };
+
+  const renameAccount = async (oldName, newName) => {
+    const clean = newName.trim();
+    if (!clean || clean === oldName || clean in accounts) {
+      showToast("Pick a different name");
+      return false;
+    }
+    const next = {};
+    Object.keys(accounts).forEach((a) => {
+      next[a === oldName ? clean : a] = accounts[a];
+    });
+    setAccounts(next);
+    await saveJSON(ACCOUNT_STORAGE_KEY, next);
+    const updatedTxns = transactions.map((tx) => {
+      let out = tx;
+      if (tx.source === oldName) out = { ...out, source: clean };
+      if (tx.fromAccount === oldName) out = { ...out, fromAccount: clean };
+      return out;
+    });
+    setTransactions(updatedTxns);
+    await saveTransactions(updatedTxns);
+    showToast(`Renamed to "${clean}"`);
+    return true;
+  };
+
+  const deleteAccount = async (name) => {
+    if (Object.keys(accounts).length <= 1) {
+      showToast("Keep at least one account");
+      return;
+    }
+    const next = { ...accounts };
+    delete next[name];
+    setAccounts(next);
+    await saveJSON(ACCOUNT_STORAGE_KEY, next);
+    showToast(`Deleted "${name}"`);
+  };
 
   const setLanguage = async (next) => {
     setLang(next);
     await saveJSON(LANG_STORAGE_KEY, next);
   };
 
-  if (!transactions || !categoryGroups || !incomeCategories || !cardLimits || !lang) {
+  if (!transactions || !categoryGroups || !incomeCategories || !cardLimits || !accounts || !lang) {
     return (
       <Shell>
         <div style={{ padding: 60, textAlign: "center", color: "var(--muted)", fontWeight: 600 }}>
@@ -884,7 +1028,7 @@ export default function App() {
       <Header tab={tab} setTab={setTab} lang={lang} setLang={setLanguage} t={t} />
       <div style={{ padding: "0 20px 100px" }}>
         {tab === "overview" && (
-          <Overview transactions={transactions} months={months} categoryGroups={categoryGroups} t={t} setTab={setTab} />
+          <Overview transactions={transactions} months={months} categoryGroups={categoryGroups} accounts={accounts} t={t} setTab={setTab} />
         )}
         {tab === "add" && (
           <AddEntry
@@ -893,6 +1037,7 @@ export default function App() {
             categoryGroups={categoryGroups}
             incomeCategories={incomeCategories}
             cardLimits={cardLimits}
+            accounts={accounts}
             t={t}
           />
         )}
@@ -937,6 +1082,7 @@ export default function App() {
           <CardsTab
             transactions={transactions}
             cardLimits={cardLimits}
+            accounts={accounts}
             countSourceUsage={countSourceUsage}
             onAddPayment={addPayment}
             onAddAdjustment={addAdjustment}
@@ -944,6 +1090,10 @@ export default function App() {
             onAddCard={addCard}
             onRenameCard={renameCard}
             onDeleteCard={deleteCard}
+            onUpdateAccountOpening={updateAccountOpening}
+            onAddAccount={addAccount}
+            onRenameAccount={renameAccount}
+            onDeleteAccount={deleteAccount}
             t={t}
           />
         )}
@@ -978,6 +1128,23 @@ export default function App() {
 --------------------------------------------------------- */
 
 function Shell({ children }) {
+  // Mouse wheel → horizontal scroll for the pill strips (month/year pickers,
+  // the category matrix). On touch you swipe; a plain mouse has no easy way
+  // to scroll these sideways, so translate vertical wheel into scrollLeft
+  // whenever the pointer is over an overflowing strip.
+  useEffect(() => {
+    const onWheel = (e) => {
+      const strip = e.target.closest && e.target.closest(".no-scrollbar");
+      if (!strip) return;
+      if (strip.scrollWidth <= strip.clientWidth) return;
+      if (e.deltaY === 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      strip.scrollLeft += e.deltaY;
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, []);
+
   return (
     <div
       style={{
@@ -994,7 +1161,8 @@ function Shell({ children }) {
         background: "var(--paper)",
         minHeight: "100vh",
         color: "var(--ink)",
-        maxWidth: 560,
+        width: "100%",
+        maxWidth: 820,
         margin: "0 auto",
         position: "relative",
       }}
@@ -1006,6 +1174,14 @@ function Shell({ children }) {
         input:focus, select:focus { outline: none; }
         ::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* On mouse/trackpad devices, give the horizontal pill strips a real
+           scrollbar so they're not swipe-only. */
+        @media (hover: hover) and (pointer: fine) {
+          .no-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(20,22,26,0.25) transparent; }
+          .no-scrollbar::-webkit-scrollbar { display: block; height: 8px; }
+          .no-scrollbar::-webkit-scrollbar-thumb { background: rgba(20,22,26,0.22); border-radius: 999px; }
+          .no-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        }
       `}</style>
       {children}
     </div>
@@ -1076,6 +1252,7 @@ function Header({ tab, setTab, lang, setLang, t }) {
         className="no-scrollbar"
         style={{
           display: "flex",
+          flexWrap: "wrap",
           gap: 8,
           padding: "18px 20px 14px",
           overflowX: "auto",
@@ -1207,7 +1384,7 @@ function periodLabel(mk, year, wholeYearLabel) {
   return mk === "ALL" ? `${wholeYearLabel || "Whole Year"} ${year || ""}`.trim() : monthLabel(mk);
 }
 
-function Overview({ transactions, months, t, setTab }) {
+function Overview({ transactions, months, accounts, t, setTab }) {
   const years = useMemo(() => yearsFromMonths(months), [months]);
   const [year, setYear] = useState(null);
   useEffect(() => {
@@ -1267,6 +1444,11 @@ function Overview({ transactions, months, t, setTab }) {
 
   const topCategory = groupTotals[0];
 
+  const accountData = useMemo(
+    () => computeAccountBalances(transactions, accounts),
+    [transactions, accounts]
+  );
+
   const investments = useMemo(() => computeInvestments(transactions), [transactions]);
   const realizedFiltered = investments.realizedEvents.filter((e) =>
     selectedMonth === "ALL" ? yearOf(e.mk) === year : e.mk === selectedMonth
@@ -1321,6 +1503,31 @@ function Overview({ transactions, months, t, setTab }) {
           <circle cx="60" cy="60" r="50" fill="none" stroke="var(--lime)" strokeWidth="2" opacity="0.35" />
         </svg>
       </Card>
+
+      {Object.keys(accountData.balances).length > 0 && (
+        <Card>
+          <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--muted)", marginBottom: 6 }}>
+            {t.overview.accountsBalance}
+          </div>
+          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 14, color: accountData.total < 0 ? "var(--red)" : "var(--ink)" }}>
+            {fmtIDR(accountData.total)}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {Object.keys(accountData.balances).map((name) => {
+              const bal = accountData.balances[name] || 0;
+              return (
+                <div key={name} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
+                  <span>{name}</span>
+                  <span style={{ color: bal < 0 ? "var(--red)" : "var(--ink)", fontWeight: 700 }}>{fmtIDR(bal)}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600, lineHeight: 1.5, marginTop: 12 }}>
+            {t.overview.accountsHint}
+          </div>
+        </Card>
+      )}
 
       <div style={{ display: "flex", gap: 12 }}>
         <Card style={{ flex: 1, padding: 16 }}>
@@ -1738,10 +1945,11 @@ function EntryList({ transactions, months, selectedMonth, setSelectedMonth, onDe
    ADD ENTRY TAB
 --------------------------------------------------------- */
 
-function AddEntry({ onAdd, months, categoryGroups, incomeCategories, cardLimits, t }) {
+function AddEntry({ onAdd, months, categoryGroups, incomeCategories, cardLimits, accounts, t }) {
   const groupOrder = Object.keys(categoryGroups);
   const investmentCategories = categoryGroups["INVESTMENTS"] || [];
-  const sources = [BASE_SOURCES[0], ...Object.keys(cardLimits), ...BASE_SOURCES.slice(1)];
+  const accountNames = Object.keys(accounts || {});
+  const cardNames = Object.keys(cardLimits);
   const [type, setType] = useState("expense");
   const [date, setDate] = useState(todayISO());
   const [name, setName] = useState("");
@@ -1751,12 +1959,23 @@ function AddEntry({ onAdd, months, categoryGroups, incomeCategories, cardLimits,
   const [incomeCategory, setIncomeCategory] = useState(incomeCategories[0] || "");
   const [investmentCategory, setInvestmentCategory] = useState(investmentCategories[0] || "");
   const [closesPosition, setClosesPosition] = useState(false);
-  const [source, setSource] = useState(sources[0]);
+  const [source, setSource] = useState(accountNames[0] || "");
   const [error, setError] = useState("");
+
+  // Expenses can be funded from an account or charged to a card. Income can
+  // only land in a real account — a credit card isn't somewhere money arrives.
+  const sourceOptions = type === "income" ? accountNames : [...accountNames, ...cardNames];
 
   const handleGroupChange = (g) => {
     setGroup(g);
     setCategory((categoryGroups[g] || [])[0] || "");
+  };
+
+  const changeType = (next) => {
+    setType(next);
+    if (next === "income" && !accountNames.includes(source)) {
+      setSource(accountNames[0] || "");
+    }
   };
 
   const reset = () => {
@@ -1770,6 +1989,10 @@ function AddEntry({ onAdd, months, categoryGroups, incomeCategories, cardLimits,
     if (!amt || amt <= 0) { setError(t.addEntry.errAmount); return; }
     if (!date) { setError(t.addEntry.errDate); return; }
     setError("");
+    if (type === "income" && !accountNames.includes(source)) {
+      setError(t.addEntry.errDepositTo);
+      return;
+    }
     const entry = {
       date,
       name: name.trim(),
@@ -1804,7 +2027,7 @@ function AddEntry({ onAdd, months, categoryGroups, incomeCategories, cardLimits,
     <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
       <div style={{ display: "flex", gap: 8 }}>
         <button
-          onClick={() => setType("expense")}
+          onClick={() => changeType("expense")}
           style={{
             flex: 1, padding: "13px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
             background: type === "expense" ? "var(--ink)" : "var(--white)", color: type === "expense" ? "var(--white)" : "var(--ink)",
@@ -1813,7 +2036,7 @@ function AddEntry({ onAdd, months, categoryGroups, incomeCategories, cardLimits,
           {t.addEntry.expense}
         </button>
         <button
-          onClick={() => setType("income")}
+          onClick={() => changeType("income")}
           style={{
             flex: 1, padding: "13px 0", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer",
             background: type === "income" ? "var(--lime)" : "var(--white)", color: "var(--ink)",
@@ -1920,12 +2143,15 @@ function AddEntry({ onAdd, months, categoryGroups, incomeCategories, cardLimits,
         )}
 
         <div>
-          <label style={labelStyle}>{t.addEntry.fundSource}</label>
+          <label style={labelStyle}>{type === "income" ? t.addEntry.depositTo : t.addEntry.fundSource}</label>
           <select style={inputStyle} value={source} onChange={(e) => setSource(e.target.value)}>
-            {sources.map((s) => (
+            {sourceOptions.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600, marginTop: 6 }}>
+            {type === "income" ? t.addEntry.depositToHint : t.addEntry.fundSourceHint}
+          </div>
         </div>
 
         {error && <div style={{ color: "var(--red)", fontSize: 12.5, fontWeight: 700 }}>{error}</div>}
@@ -2628,8 +2854,9 @@ function CreditCardCard({ card, limit, balance, usage, onUpdateLimit, onRenameCa
   );
 }
 
-function LogPaymentForm({ cardNames, onAddPayment, t }) {
+function LogPaymentForm({ cardNames, accountNames, onAddPayment, t }) {
   const [card, setCard] = useState(cardNames[0] || "");
+  const [fromAccount, setFromAccount] = useState(accountNames[0] || "");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(todayISO());
   const [error, setError] = useState("");
@@ -2645,7 +2872,14 @@ function LogPaymentForm({ cardNames, onAddPayment, t }) {
     if (!amt || amt <= 0) { setError(t.addEntry.errAmount); return; }
     if (!date || !card) { setError(t.addEntry.errDate); return; }
     setError("");
-    onAddPayment({ card, amount: amt, date, name: `Payment — ${card}`, source: card });
+    onAddPayment({
+      card,
+      amount: amt,
+      date,
+      name: `Payment — ${card}`,
+      source: card,
+      fromAccount: fromAccount || undefined,
+    });
     setAmount("");
   };
 
@@ -2657,6 +2891,14 @@ function LogPaymentForm({ cardNames, onAddPayment, t }) {
         <select style={inputStyle} value={card} onChange={(e) => setCard(e.target.value)}>
           {cardNames.map((c) => (
             <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label style={labelStyle}>{t.cards.paidFrom}</label>
+        <select style={inputStyle} value={fromAccount} onChange={(e) => setFromAccount(e.target.value)}>
+          {accountNames.map((a) => (
+            <option key={a} value={a}>{a}</option>
           ))}
         </select>
       </div>
@@ -2746,6 +2988,7 @@ function AddCardForm({ onAddCard, t }) {
 function CardsTab({
   transactions,
   cardLimits,
+  accounts,
   countSourceUsage,
   onAddPayment,
   onAddAdjustment,
@@ -2753,13 +2996,47 @@ function CardsTab({
   onAddCard,
   onRenameCard,
   onDeleteCard,
+  onUpdateAccountOpening,
+  onAddAccount,
+  onRenameAccount,
+  onDeleteAccount,
   t,
 }) {
   const cardNames = Object.keys(cardLimits);
+  const accountNames = Object.keys(accounts || {});
   const balances = useMemo(() => computeCardBalances(transactions, cardNames), [transactions, cardLimits]);
+  const accountData = useMemo(
+    () => computeAccountBalances(transactions, accounts),
+    [transactions, accounts]
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, paddingTop: 4 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 700, padding: "0 2px" }}>{t.cards.accountsTitle}</div>
+      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, padding: "0 2px" }}>
+        {t.cards.accountsHint}
+      </div>
+
+      {accountNames.map((name) => (
+        <AccountCard
+          key={name}
+          name={name}
+          opening={accounts[name] || 0}
+          liveBalance={accountData.balances[name] || 0}
+          usage={countSourceUsage(name)}
+          canDelete={accountNames.length > 1}
+          onUpdateOpening={onUpdateAccountOpening}
+          onRename={onRenameAccount}
+          onDelete={onDeleteAccount}
+          t={t}
+        />
+      ))}
+
+      <AddAccountForm onAddAccount={onAddAccount} t={t} />
+
+      <div style={{ height: 1, background: "var(--line)", margin: "4px 0" }} />
+
+      <div style={{ fontSize: 13.5, fontWeight: 700, padding: "0 2px" }}>{t.nav.cards}</div>
       <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, padding: "0 2px" }}>
         {t.cards.hint}
       </div>
@@ -2791,8 +3068,171 @@ function CardsTab({
 
       <AddCardForm onAddCard={onAddCard} t={t} />
 
-      <LogPaymentForm cardNames={cardNames} onAddPayment={onAddPayment} t={t} />
+      <LogPaymentForm cardNames={cardNames} accountNames={accountNames} onAddPayment={onAddPayment} t={t} />
     </div>
+  );
+}
+
+/* ---- account management (Cards tab) ---- */
+
+function AccountCard({ name, opening, liveBalance, usage, canDelete, onUpdateOpening, onRename, onDelete, t }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editingOpening, setEditingOpening] = useState(false);
+  const [editingBalance, setEditingBalance] = useState(false);
+  const [draft, setDraft] = useState(String(opening));
+  const [balDraft, setBalDraft] = useState(String(Math.round(liveBalance)));
+
+  const commitOpening = () => {
+    const num = parseFloat(String(draft).replace(/[^0-9.-]/g, ""));
+    if (!Number.isNaN(num) && num !== opening) onUpdateOpening(name, num);
+    setEditingOpening(false);
+  };
+
+  // Editing the headline number sets the balance to exactly what you type
+  // by shifting the opening balance by the difference — history still flows
+  // forward from there.
+  const commitBalance = () => {
+    const target = parseFloat(String(balDraft).replace(/[^0-9.-]/g, ""));
+    if (!Number.isNaN(target) && target !== Math.round(liveBalance)) {
+      onUpdateOpening(name, Math.round(opening + (target - liveBalance)));
+    }
+    setEditingBalance(false);
+  };
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <CardNameLabel card={name} onSave={(next) => onRename(name, next)} />
+          <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 600, marginTop: 2 }}>
+            {t.cards.accountEntries(usage)}
+          </div>
+        </div>
+        {canDelete && (
+          confirmDelete ? (
+            <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+              <button
+                onClick={() => { onDelete(name); setConfirmDelete(false); }}
+                style={{ background: "var(--red)", color: "white", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+              >
+                {t.common.delete}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                style={{ background: "var(--paper)", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
+              >
+                {t.common.cancel}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              style={{ background: "transparent", border: "none", color: "var(--muted)", cursor: "pointer", padding: 4, flexShrink: 0 }}
+            >
+              <IconTrash />
+            </button>
+          )
+        )}
+      </div>
+
+      {editingBalance ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            autoFocus
+            inputMode="numeric"
+            value={balDraft}
+            onChange={(e) => setBalDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitBalance(); if (e.key === "Escape") { setBalDraft(String(Math.round(liveBalance))); setEditingBalance(false); } }}
+            onBlur={commitBalance}
+            style={{ width: 180, padding: "8px 10px", borderRadius: 8, border: "1.5px solid var(--blue)", fontSize: 18, fontWeight: 700, letterSpacing: "-0.02em" }}
+          />
+        </div>
+      ) : (
+        <button
+          onClick={() => { setBalDraft(String(Math.round(liveBalance))); setEditingBalance(true); }}
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em", color: liveBalance < 0 ? "var(--red)" : "var(--ink)" }}
+        >
+          {fmtIDR(liveBalance)}
+        </button>
+      )}
+      <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{t.cards.liveBalanceLabel} · {t.cards.tapToEdit}</div>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{t.cards.openingBalanceLabel}</span>
+        {editingOpening ? (
+          <input
+            autoFocus
+            inputMode="numeric"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitOpening(); if (e.key === "Escape") { setDraft(String(opening)); setEditingOpening(false); } }}
+            onBlur={commitOpening}
+            style={{ width: 150, padding: "6px 8px", borderRadius: 8, border: "1.5px solid var(--blue)", fontSize: 12.5, fontWeight: 700, textAlign: "right" }}
+          />
+        ) : (
+          <button
+            onClick={() => { setDraft(String(opening)); setEditingOpening(true); }}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13, fontWeight: 700, color: "var(--blue)" }}
+          >
+            {fmtIDR(opening)}
+          </button>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function AddAccountForm({ onAddAccount, t }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [opening, setOpening] = useState("");
+  const [error, setError] = useState("");
+
+  const inputStyle = {
+    width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid var(--line)",
+    background: "var(--paper)", fontSize: 13.5, fontWeight: 600, color: "var(--ink)",
+  };
+
+  const submit = async () => {
+    if (!name.trim()) { setError(t.addEntry.errName); return; }
+    const num = parseFloat(String(opening).replace(/[^0-9.-]/g, ""));
+    setError("");
+    const ok = await onAddAccount(name, Number.isNaN(num) ? 0 : num);
+    if (ok) { setName(""); setOpening(""); setOpen(false); }
+  };
+
+  if (!open) {
+    return (
+      <Card>
+        <button
+          onClick={() => setOpen(true)}
+          style={{
+            width: "100%", padding: "12px 0", borderRadius: 12, border: "1.5px dashed var(--line)",
+            background: "transparent", color: "var(--ink)", fontWeight: 700, fontSize: 13.5, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          }}
+        >
+          <IconPlus /> {t.cards.addAccount}
+        </button>
+      </Card>
+    );
+  }
+
+  return (
+    <Card style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 14, fontWeight: 700 }}>{t.cards.newAccount}</div>
+      <input placeholder={t.cards.accountNamePlaceholder} value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+      <input placeholder={t.cards.openingPlaceholder} inputMode="numeric" value={opening} onChange={(e) => setOpening(e.target.value)} style={inputStyle} />
+      {error && <div style={{ color: "var(--red)", fontSize: 12, fontWeight: 700 }}>{error}</div>}
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={submit} style={{ flex: 1, padding: "10px 0", borderRadius: 10, border: "none", background: "var(--blue)", color: "var(--white)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          {t.common.add}
+        </button>
+        <button onClick={() => setOpen(false)} style={{ padding: "10px 16px", borderRadius: 10, border: "none", background: "var(--paper)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          {t.common.cancel}
+        </button>
+      </div>
+    </Card>
   );
 }
 

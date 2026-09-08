@@ -1,0 +1,58 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap");
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #efedf5;
+  -webkit-font-smoothing: antialiased;
+}
+
+input,
+select,
+button {
+  font-family: inherit;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Mouse / trackpad devices: restore a slim scrollbar on the horizontal
+   pill strips so they aren't swipe-only. */
+@media (hover: hover) and (pointer: fine) {
+  .no-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(20, 22, 26, 0.25) transparent;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: block;
+    height: 8px;
+  }
+  .no-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(20, 22, 26, 0.22);
+    border-radius: 999px;
+  }
+  .no-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}

@@ -1,9 +1,34 @@
 # Daily Budgeting — by Axel Dilvala
 
 A personal budgeting app: log income and expenses, see them broken down
-category by category and month to month, and track investment balances
-separately from everyday spending. Installable as a PWA on Android, iOS,
-and desktop.
+category by category and month to month, track investment balances
+separately from everyday spending, and keep an eye on credit card limits.
+Bilingual (English/Indonesian) with an in-app Help tab. Installable as a
+PWA on Android, iOS, and desktop.
+
+Ships with **zero transactions** — every person who opens this starts
+from a clean slate, not with anyone else's spending history.
+
+## Features
+
+- **Overview** — net cash flow, income vs. expense chart, spending by
+  group, account balances, investment balances, all filterable by
+  month or year
+- **Add** — log income or expenses; credit card purchases are logged
+  once at purchase, never again at bill payment
+- **Accounts** — each cash/bank account has an opening balance you set
+  once on the Cards tab; its live balance then tracks income in,
+  spending out, and card payments made from it
+- **Categories** — month-by-month breakdown, year-scoped
+- **Manage** — add, rename, or delete categories and groups; renaming
+  updates history, deleting only affects future entries
+- **Cards** — manage cash/bank accounts and their opening balances;
+  track credit limits, log payments (deducted from a chosen account),
+  and record untracked spending (like a forgotten subscription) as a
+  balance adjustment
+- **Data** — export/import a JSON backup to move data between devices
+- **Help** — an in-app reference for how the app's rules work
+- **EN/ID toggle** in the header
 
 ## How data works
 
@@ -68,7 +93,8 @@ The build output goes to `dist/`.
 
 ## Notes
 
-- Seeded with the original Jan–Aug transaction history on first load.
-  Clear local storage (or use the Data tab's "Replace everything" import)
-  to start fresh.
+- Starts completely empty — the Data tab's "Replace everything" import
+  is how you'd load a backup exported from another instance.
+- Default category structure, income categories, and card limits are
+  editable from the **Manage** and **Cards** tabs — nothing is locked in.
 - Built with React + [Recharts](https://recharts.org) for the charts.
