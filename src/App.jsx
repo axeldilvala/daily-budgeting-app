@@ -522,6 +522,7 @@ const INCOME_CATEGORY_STORAGE_KEY = "axel-budget-income-categories-v1";
 const CARD_LIMIT_STORAGE_KEY = "axel-budget-card-limits-v1";
 const ACCOUNT_STORAGE_KEY = "axel-budget-accounts-v1";
 const LANG_STORAGE_KEY = "axel-budget-lang-v1";
+const SIDEBAR_STORAGE_KEY = "axel-budget-sidebar-collapsed-v1";
 
 const DEFAULT_CARD_LIMITS = {
   "Credit Card BCA": 7000000,
@@ -643,6 +644,20 @@ export default function App() {
   const [accounts, setAccounts] = useState(null);
   const [lang, setLang] = useState(null);
   const [tab, setTab] = useState("overview");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
+    } catch (e) {
+      // storage unavailable
+    }
+  }, [sidebarCollapsed]);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
@@ -1025,8 +1040,17 @@ export default function App() {
 
   return (
     <Shell>
-      <Header tab={tab} setTab={setTab} lang={lang} setLang={setLanguage} t={t} />
-      <div style={{ padding: "0 20px 100px" }}>
+      <div className="app-layout">
+        <Sidebar
+          tab={tab}
+          setTab={setTab}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+          t={t}
+        />
+        <div className="main-col">
+          <Header lang={lang} setLang={setLanguage} t={t} />
+          <div className="tab-content">
         {tab === "overview" && (
           <Overview transactions={transactions} months={months} categoryGroups={categoryGroups} accounts={accounts} t={t} setTab={setTab} />
         )}
@@ -1098,27 +1122,11 @@ export default function App() {
           />
         )}
         {tab === "help" && <HelpTab t={t} />}
-      </div>
-      {toast && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 24,
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "var(--ink)",
-            color: "var(--paper)",
-            padding: "12px 22px",
-            borderRadius: 999,
-            fontWeight: 700,
-            fontSize: 13.5,
-            boxShadow: "0 8px 24px rgba(20,22,26,0.25)",
-            zIndex: 50,
-          }}
-        >
-          {toast}
+          </div>
+          {toast && <div className="toast">{toast}</div>}
         </div>
-      )}
+      </div>
+      <BottomNav tab={tab} setTab={setTab} t={t} />
     </Shell>
   );
 }
@@ -1147,6 +1155,7 @@ function Shell({ children }) {
 
   return (
     <div
+      className="shell"
       style={{
         "--ink": "#14161A",
         "--paper": "#EFEDF5",
@@ -1161,9 +1170,6 @@ function Shell({ children }) {
         background: "var(--paper)",
         minHeight: "100vh",
         color: "var(--ink)",
-        width: "100%",
-        maxWidth: 820,
-        margin: "0 auto",
         position: "relative",
       }}
     >
@@ -1182,6 +1188,129 @@ function Shell({ children }) {
           .no-scrollbar::-webkit-scrollbar-thumb { background: rgba(20,22,26,0.22); border-radius: 999px; }
           .no-scrollbar::-webkit-scrollbar-track { background: transparent; }
         }
+
+        /* ---- shell width + layout ---- */
+        .shell { width: 100%; max-width: 820px; margin: 0 auto; }
+        @media (min-width: 900px) {
+          .shell { max-width: 1040px; }
+        }
+        .app-layout { display: flex; align-items: flex-start; }
+        .main-col { flex: 1; min-width: 0; }
+        .tab-content { padding: 0 20px 100px; max-width: 820px; margin: 0 auto; }
+        @media (min-width: 900px) {
+          .tab-content { padding-bottom: 40px; }
+        }
+
+        /* ---- sidebar (desktop) ---- */
+        .sidebar { display: none; }
+        @media (min-width: 900px) {
+          .sidebar {
+            display: flex;
+            flex-direction: column;
+            width: 208px;
+            flex-shrink: 0;
+            gap: 14px;
+            padding: 26px 12px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+          }
+          .sidebar.collapsed { width: 68px; }
+          .sidebar.collapsed .sidebar-item { justify-content: center; padding: 12px; }
+        }
+        .sidebar-toggle {
+          align-self: flex-end;
+          border: none;
+          background: var(--white);
+          color: var(--muted);
+          width: 30px;
+          height: 30px;
+          border-radius: 999px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          flex-shrink: 0;
+        }
+        .sidebar.collapsed .sidebar-toggle { align-self: center; }
+        .sidebar-nav { display: flex; flex-direction: column; gap: 4px; }
+        .sidebar-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border: none;
+          background: transparent;
+          color: var(--ink);
+          font-weight: 700;
+          font-size: 13.5px;
+          padding: 11px 12px;
+          border-radius: 12px;
+          cursor: pointer;
+          text-align: left;
+          white-space: nowrap;
+          transition: background 0.15s ease, color 0.15s ease;
+        }
+        .sidebar-item:hover { background: rgba(20,22,26,0.05); }
+        .sidebar-item.active { background: var(--blue); color: var(--white); }
+        .sidebar-item span { overflow: hidden; text-overflow: ellipsis; }
+
+        /* ---- bottom nav (mobile) ---- */
+        .bottom-nav {
+          position: fixed;
+          left: 50%;
+          transform: translateX(-50%);
+          bottom: 0;
+          width: 100%;
+          max-width: 820px;
+          display: flex;
+          gap: 2px;
+          overflow-x: auto;
+          background: var(--white);
+          padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+          box-shadow: 0 -2px 16px rgba(20,22,26,0.10);
+          z-index: 20;
+        }
+        @media (min-width: 900px) {
+          .bottom-nav { display: none; }
+        }
+        .bottom-nav-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 3px;
+          flex: 1 0 auto;
+          min-width: 60px;
+          border: none;
+          background: transparent;
+          color: var(--muted);
+          font-weight: 700;
+          padding: 7px 4px;
+          border-radius: 14px;
+          cursor: pointer;
+        }
+        .bottom-nav-item span { font-size: 9px; white-space: nowrap; }
+        .bottom-nav-item.active { color: var(--blue); background: rgba(46,68,242,0.08); }
+
+        /* ---- toast ---- */
+        .toast {
+          position: fixed;
+          left: 50%;
+          transform: translateX(-50%);
+          bottom: 88px;
+          background: var(--ink);
+          color: var(--paper);
+          padding: 12px 22px;
+          border-radius: 999px;
+          font-weight: 700;
+          font-size: 13.5px;
+          box-shadow: 0 8px 24px rgba(20,22,26,0.25);
+          z-index: 50;
+        }
+        @media (min-width: 900px) {
+          .toast { bottom: 24px; }
+        }
       `}</style>
       {children}
     </div>
@@ -1189,23 +1318,93 @@ function Shell({ children }) {
 }
 
 /* ---------------------------------------------------------
-   HEADER + TABS
+   ICONS
 --------------------------------------------------------- */
 
-function Header({ tab, setTab, lang, setLang, t }) {
-  const tabs = [
-    { id: "overview", label: t.nav.overview },
-    { id: "categories", label: t.nav.categories },
-    { id: "entries", label: t.nav.entries },
-    { id: "add", label: t.nav.add },
-    { id: "manage", label: t.nav.manage },
-    { id: "cards", label: t.nav.cards },
-    { id: "data", label: t.nav.data },
-    { id: "help", label: t.nav.help },
-  ];
+const ICON_PATHS = {
+  overview: <path d="M4 20V10M12 20V4M20 20V14" />,
+  categories: (
+    <>
+      <rect x="4" y="4" width="7" height="7" rx="1.5" />
+      <rect x="13" y="4" width="7" height="7" rx="1.5" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" />
+      <rect x="13" y="13" width="7" height="7" rx="1.5" />
+    </>
+  ),
+  entries: (
+    <>
+      <path d="M8 6h12M8 12h12M8 18h12" />
+      <circle cx="4" cy="6" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="4" cy="18" r="1.3" fill="currentColor" stroke="none" />
+    </>
+  ),
+  add: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 8v8M8 12h8" />
+    </>
+  ),
+  manage: (
+    <>
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="7" cy="17" r="2" />
+    </>
+  ),
+  cards: (
+    <>
+      <rect x="3" y="6" width="18" height="13" rx="2.5" />
+      <path d="M3 10.5h18" />
+      <path d="M7 15h4" />
+    </>
+  ),
+  data: (
+    <>
+      <ellipse cx="12" cy="6" rx="8" ry="3" />
+      <path d="M4 6v6c0 1.66 3.58 3 8 3s8-1.34 8-3V6" />
+      <path d="M4 12v6c0 1.66 3.58 3 8 3s8-1.34 8-3v-6" />
+    </>
+  ),
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.2a2.5 2.5 0 1 1 3.4 2.3c-.9.5-1.4 1-1.4 2" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </>
+  ),
+  chevronLeft: <path d="M15 6l-6 6 6 6" />,
+  chevronRight: <path d="M9 6l6 6-6 6" />,
+};
+
+function Icon({ name, size = 18 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      {ICON_PATHS[name]}
+    </svg>
+  );
+}
+
+const NAV_ITEMS = ["overview", "categories", "entries", "add", "manage", "cards", "data", "help"];
+
+/* ---------------------------------------------------------
+   HEADER
+--------------------------------------------------------- */
+
+function Header({ lang, setLang, t }) {
   return (
     <div style={{ position: "sticky", top: 0, zIndex: 10, background: "var(--paper)", paddingTop: 22 }}>
-      <div style={{ padding: "0 20px" }}>
+      <div style={{ padding: "0 20px 18px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
           <div>
             <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, letterSpacing: "-0.01em", lineHeight: 1.15 }}>
@@ -1248,37 +1447,54 @@ function Header({ tab, setTab, lang, setLang, t }) {
           </div>
         </div>
       </div>
-      <div
-        className="no-scrollbar"
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 8,
-          padding: "18px 20px 14px",
-          overflowX: "auto",
-        }}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   SIDEBAR (desktop) + BOTTOM NAV (mobile)
+--------------------------------------------------------- */
+
+function Sidebar({ tab, setTab, collapsed, onToggleCollapsed, t }) {
+  return (
+    <div className={collapsed ? "sidebar collapsed" : "sidebar"}>
+      <button
+        className="sidebar-toggle"
+        onClick={onToggleCollapsed}
+        aria-label={collapsed ? "Expand menu" : "Collapse menu"}
       >
-        {tabs.map((tb) => (
+        <Icon name={collapsed ? "chevronRight" : "chevronLeft"} size={15} />
+      </button>
+      <nav className="sidebar-nav">
+        {NAV_ITEMS.map((id) => (
           <button
-            key={tb.id}
-            onClick={() => setTab(tb.id)}
-            style={{
-              padding: "9px 16px",
-              borderRadius: 999,
-              border: "none",
-              fontWeight: 700,
-              fontSize: 13.5,
-              cursor: "pointer",
-              flexShrink: 0,
-              background: tab === tb.id ? "var(--blue)" : "var(--white)",
-              color: tab === tb.id ? "var(--white)" : "var(--ink)",
-              transition: "background 0.15s ease",
-            }}
+            key={id}
+            className={tab === id ? "sidebar-item active" : "sidebar-item"}
+            onClick={() => setTab(id)}
+            title={collapsed ? t.nav[id] : undefined}
           >
-            {tb.label}
+            <Icon name={id} size={18} />
+            {!collapsed && <span>{t.nav[id]}</span>}
           </button>
         ))}
-      </div>
+      </nav>
+    </div>
+  );
+}
+
+function BottomNav({ tab, setTab, t }) {
+  return (
+    <div className="bottom-nav no-scrollbar">
+      {NAV_ITEMS.map((id) => (
+        <button
+          key={id}
+          className={tab === id ? "bottom-nav-item active" : "bottom-nav-item"}
+          onClick={() => setTab(id)}
+        >
+          <Icon name={id} size={18} />
+          <span>{t.nav[id]}</span>
+        </button>
+      ))}
     </div>
   );
 }
